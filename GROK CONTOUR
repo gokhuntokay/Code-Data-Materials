@@ -1,0 +1,57 @@
+import cv2
+import numpy as np
+import os
+from pathlib import Path
+
+# Directory containing images
+image_dir = "/content/"
+
+# Lists to store results
+results = []
+
+# Process each image (1.png to 25.png)
+for i in range(1, 26):
+    # Load image
+    image_path = os.path.join(image_dir, f"{i}.png")
+    if not os.path.exists(image_path):
+        print(f"Image {image_path} not found, skipping.")
+        continue
+    
+    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        print(f"Failed to load image {image_path}, skipping.")
+        continue
+    
+    # Get image dimensions
+    height, width = img.shape
+    total_pixels = height * width
+    
+    # Apply binary inverse thresholding
+    _, thresh = cv2.threshold(img, 50, 255, cv2.THRESH_BINARY_INV)
+    
+    # Find contours
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Calculate metrics
+    num_particles = len(contours)
+    total_area = sum(cv2.contourArea(contour) for contour in contours)
+    avg_size = total_area / num_particles if num_particles > 0 else 0
+    area_percent = (total_area / total_pixels * 100) if total_pixels > 0 else 0
+    
+    # Store results
+    results.append({
+        'Image': f"{i}.png",
+        'Number of Particles': num_particles,
+        'Total Area (px²)': total_area,
+        'Average Size (px²)': avg_size,
+        'Area %': area_percent
+    })
+
+# Print results
+print("\nSEM Image Analysis Results:")
+print("-" * 80)
+print(f"{'Image':<10} {'Particles':<12} {'Total Area (px²)':<18} {'Avg Size (px²)':<18} {'Area %':<10}")
+print("-" * 80)
+for result in results:
+    print(f"{result['Image']:<10} {result['Number of Particles']:<12} {result['Total Area (px²)']:<18.1f} {result['Average Size (px²)']:<18.1f} {result['Area %']:<10.2f}")
+print("-" * 80)

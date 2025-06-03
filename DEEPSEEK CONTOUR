@@ -1,0 +1,84 @@
+import cv2
+import numpy as np
+import os
+
+# Parameters
+image_folder = '/content/'
+threshold_value = 50
+num_images = 25
+
+# Initialize results storage
+results = {
+    'Image': [],
+    'Number of Particles': [],
+    'Total Area (px²)': [],
+    'Average Size (px²)': [],
+    'Area %': []
+}
+
+# Process each image
+for i in range(1, num_images + 1):
+    # Load image
+    img_path = os.path.join(image_folder, f'{i}.png')
+    if not os.path.exists(img_path):
+        print(f"Warning: Image {i}.png not found, skipping...")
+        continue
+    
+    img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        print(f"Warning: Could not read image {i}.png, skipping...")
+        continue
+    
+    # Get image dimensions for area percentage calculation
+    height, width = img.shape
+    total_pixels = height * width
+    
+    # Apply thresholding
+    _, thresh = cv2.threshold(img, threshold_value, 255, cv2.THRESH_BINARY_INV)
+    
+    # Find contours
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Calculate particle statistics
+    num_particles = len(contours)
+    total_area = 0
+    areas = []
+    
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        total_area += area
+        areas.append(area)
+    
+    avg_size = total_area / num_particles if num_particles > 0 else 0
+    area_percent = (total_area / total_pixels) * 100 if total_pixels > 0 else 0
+    
+    # Store results
+    results['Image'].append(f'{i}.png')
+    results['Number of Particles'].append(num_particles)
+    results['Total Area (px²)'].append(total_area)
+    results['Average Size (px²)'].append(avg_size)
+    results['Area %'].append(area_percent)
+
+# Print results in a table format
+print("{:<10} {:<20} {:<15} {:<15} {:<10}".format(
+    'Image', 'Number of Particles', 'Total Area (px²)', 'Average Size (px²)', 'Area %'))
+print("-" * 75)
+
+for i in range(len(results['Image'])):
+    print("{:<10} {:<20} {:<15.2f} {:<15.2f} {:<10.2f}".format(
+        results['Image'][i],
+        results['Number of Particles'][i],
+        results['Total Area (px²)'][i],
+        results['Average Size (px²)'][i],
+        results['Area %'][i]))
+
+# Calculate and print summary statistics
+if len(results['Image']) > 0:
+    print("\nSummary Statistics Across All Images:")
+    print(f"Total Images Analyzed: {len(results['Image'])}")
+    print(f"Average Number of Particles: {np.mean(results['Number of Particles']):.2f}")
+    print(f"Average Total Area: {np.mean(results['Total Area (px²)']):.2f} px²")
+    print(f"Overall Average Particle Size: {np.mean(results['Average Size (px²)']):.2f} px²")
+    print(f"Average Area Coverage: {np.mean(results['Area %']):.2f}%")
+else:
+    print("\nNo images were processed.")

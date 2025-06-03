@@ -1,0 +1,45 @@
+import cv2
+import numpy as np
+import os
+
+# Directory containing images
+image_dir = "/content/"
+
+# Initialize list to store results
+results = []
+
+# Process images 1.png to 25.png
+for i in range(1, 26):
+    # Construct image path
+    image_path = os.path.join(image_dir, f"{i}.png")
+    
+    # Check if image exists
+    if not os.path.exists(image_path):
+        print(f"Image {image_path} not found")
+        continue
+    
+    # Read image in grayscale
+    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        print(f"Failed to load image {image_path}")
+        continue
+    
+    # Apply binary thresholding (threshold = 10)
+    _, binary = cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)
+    
+    # Calculate total pixels and black pixels (pores)
+    total_pixels = binary.size
+    black_pixels = np.sum(binary == 0)
+    
+    # Calculate pore percentage
+    pore_percentage = (black_pixels / total_pixels) * 100
+    
+    # Store result
+    results.append((i, pore_percentage))
+
+# Display results
+print("\nPore Analysis Results:")
+print("Image\tPore %")
+print("-" * 20)
+for image_num, pore_pct in results:
+    print(f"{image_num}.png\t{pore_pct:.2f}%")

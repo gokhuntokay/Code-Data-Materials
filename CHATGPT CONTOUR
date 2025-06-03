@@ -1,0 +1,58 @@
+import cv2
+import os
+import numpy as np
+
+# Path to images
+image_dir = "/content"
+num_images = 25
+
+# Results list
+results = []
+
+print(f"{'Image':>6} | {'Particles':>9} | {'Total Area (px²)':>16} | {'Avg Size (px²)':>15} | {'Area %':>8}")
+print("-" * 70)
+
+for i in range(1, num_images + 1):
+    filename = os.path.join(image_dir, f"{i}.png")
+    image = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+
+    if image is None:
+        print(f"{i:>6} | {'ERROR: Not Found':<55}")
+        continue
+
+    # Get image area
+    img_area = image.shape[0] * image.shape[1]
+
+    # Apply thresholding
+    _, thresh = cv2.threshold(image, 50, 255, cv2.THRESH_BINARY_INV)
+
+    # Find contours
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Calculate area
+    areas = [cv2.contourArea(cnt) for cnt in contours]
+    num_particles = len(areas)
+    total_area = sum(areas)
+    avg_size = total_area / num_particles if num_particles > 0 else 0
+    area_percent = (total_area / img_area) * 100
+
+    # Store result
+    results.append({
+        "Image": f"{i}.png",
+        "Particles": num_particles,
+        "TotalArea": total_area,
+        "AverageSize": avg_size,
+        "AreaPercent": area_percent
+    })
+
+    # Print result line
+    print(f"{i:>6} | {num_particles:>9} | {total_area:>16.2f} | {avg_size:>15.2f} | {area_percent:>7.2f}%")
+
+# Optional: save results to CSV
+import csv
+with open('/content/sem_analysis_results.csv', 'w', newline='') as f:
+    writer = csv.DictWriter(f, fieldnames=["Image", "Particles", "TotalArea", "AverageSize", "AreaPercent"])
+    writer.writeheader()
+    writer.writerows(results)
+
+print("\nAnalysis complete. Results saved to /content/sem_analysis_results.csv")

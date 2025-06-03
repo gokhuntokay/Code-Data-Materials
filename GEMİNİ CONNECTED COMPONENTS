@@ -1,0 +1,93 @@
+import cv2
+import numpy as np
+import os
+
+# --- Configuration ---
+image_folder = '/content/'
+num_images = 25
+threshold_value = 50
+connectivity = 8 # For connected components
+
+# --- Analysis ---
+results = []
+
+for i in range(1, num_images + 1):
+    image_name = f"{i}.png"
+    image_path = os.path.join(image_folder, image_name)
+
+    if not os.path.exists(image_path):
+        print(f"Warning: Image {image_path} not found. Skipping.")
+        results.append({
+            "Image": image_name,
+            "Error": "File not found"
+        })
+        continue
+
+    # Read the grayscale image
+    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
+    if img is None:
+        print(f"Warning: Could not read image {image_path}. Skipping.")
+        results.append({
+            "Image": image_name,
+            "Error": "Could not read image"
+        })
+        continue
+
+    # 1. Apply binary thresholding
+    _, thresh_img = cv2.threshold(img, threshold_value, 255, cv2.THRESH_BINARY_INV)
+
+    # 2. Connected Components Analysis
+    # The first element is the number of labels (num_labels)
+    # The second element is the labels matrix (labels)
+    # The third element is the stats matrix (stats)
+    # The fourth element is the centroids matrix (centroids)
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(thresh_img, connectivity, cv2.CV_32S)
+
+    # The first label (0) is the background. We need to exclude it.
+    # Number of particles is num_labels - 1
+    number_of_particles = num_labels - 1
+
+    if number_of_particles == 0:
+        total_particle_area = 0
+        average_particle_size = 0
+    else:
+        # Filter out the background component's stats
+        # stats[0] is the background
+        particle_areas = stats[1:, cv2.CC_STAT_AREA] # Area is the 5th column (index 4)
+        total_particle_area = np.sum(particle_areas)
+        average_particle_size = np.mean(particle_areas)
+
+    # Calculate total image area
+    img_height, img_width = img.shape
+    total_image_area = img_height * img_width
+
+    # Calculate Area %
+    area_percentage = (total_particle_area / total_image_area) * 100 if total_image_area > 0 else 0
+
+    results.append({
+        "Image": image_name,
+        "Number of Particles": number_of_particles,
+        "Total Particle Area (px²)": total_particle_area,
+        "Average Particle Size (px²)": round(average_particle_size, 2) if number_of_particles > 0 else 0,
+        "Area %": round(area_percentage, 2)
+    })
+
+# --- Display Results ---
+print("--- Image Analysis Results ---")
+for res in results:
+    if "Error" in res:
+        print(f"Image: {res['Image']}, Error: {res['Error']}")
+    else:
+        print(f"Image: {res['Image']}")
+        print(f"  Number of Particles: {res['Number of Particles']}")
+        print(f"  Total Particle Area (px²): {res['Total Particle Area (px²)']}")
+        print(f"  Average Particle Size (px²): {res['Average Particle Size (px²)']}")
+        print(f"  Area %: {res['Area %']}%")
+    print("-" * 30)
+
+# You can also save the results to a CSV file if needed
+# import pandas as pd
+# df = pd.DataFrame(results)
+# df.to_csv("sem_image_analysis_results.csv", index=False)
+# print("\nResults also saved to sem_image_analysis_results.csv")
